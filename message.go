@@ -8,6 +8,8 @@ import (
 
 const requestCSMessageType = "requestCS"
 const tokenMessageType = "token"
+const conditionalWaitMessageType = "conditionalWait"
+const conditionalSignalMessageType = "conditionalSignal"
 
 type message struct {
 	Type string `json:"type"`
@@ -62,7 +64,7 @@ func deserializeRequestCSMessage(data []byte) (*requestCSMessage, error) {
 	return &req, nil
 }
 
-func serializeTokenMessage(mid string, t *Token) ([]byte, error) {
+func serializeTokenMessage(mid string, t *token) ([]byte, error) {
 	marshToken, err := json.Marshal(t)
 	if err != nil {
 		return nil, errors.New("failed to serialize token")
@@ -81,11 +83,79 @@ func serializeTokenMessage(mid string, t *Token) ([]byte, error) {
 	return marshMessage, nil
 }
 
-func deserializeTokenMessage(data []byte) (*Token, error) {
-	var token Token
+func deserializeTokenMessage(data []byte) (*token, error) {
+	var token token
 	err := json.Unmarshal(data, &token)
 	if err != nil {
 		return nil, errors.New("failed to deserialize Token")
 	}
 	return &token, nil
+}
+
+type conditionalWaitMessage struct {
+	From string `json:"from"`
+	Cid  string `json:"cond"`
+}
+
+func serializeConditionalWaitMessage(from string, mid string, cid string) ([]byte, error) {
+	condWait := conditionalWaitMessage{
+		From: from,
+		Cid:  cid,
+	}
+	marshCondWait, err := json.Marshal(condWait)
+	if err != nil {
+		return nil, errors.New("failed to serialize ConditionalWaitMessage")
+	}
+	msg := message{
+		Type: conditionalWaitMessageType,
+		Mid:  mid,
+		Data: marshCondWait,
+	}
+	marshMsg, err := json.Marshal(msg)
+	if err != nil {
+		return nil, errors.New("failed to serialize Message for ConditionalWaitMessage")
+	}
+	return marshMsg, nil
+}
+
+func deserializeConditionalWaitMessage(data []byte) (*conditionalWaitMessage, error) {
+	var condWait conditionalWaitMessage
+	err := json.Unmarshal(data, &condWait)
+	if err != nil {
+		return nil, errors.New("failed to deserialize RequestCSMessage")
+	}
+	return &condWait, nil
+}
+
+type conditionalSignalMessage struct {
+	Cid string `json:"cond"`
+}
+
+func serializeConditionalSignalMessage(mid string, cid string) ([]byte, error) {
+	condSignal := conditionalSignalMessage{
+		Cid: cid,
+	}
+	marshCondSignal, err := json.Marshal(condSignal)
+	if err != nil {
+		return nil, errors.New("failed to serialize ConditionalWaitMessage")
+	}
+	msg := message{
+		Type: conditionalSignalMessageType,
+		Mid:  mid,
+		Data: marshCondSignal,
+	}
+	marshMsg, err := json.Marshal(msg)
+	if err != nil {
+		return nil, errors.New("failed to serialize Message for ConditionalWaitMessage")
+	}
+	return marshMsg, nil
+}
+
+func deserializeConditionalSignalMessage(data []byte) (*conditionalSignalMessage, error) {
+	var condSignal conditionalSignalMessage
+	err := json.Unmarshal(data, &condSignal)
+	if err != nil {
+		return nil, errors.New("failed to deserialize ConditionalSignalMessage")
+	}
+	return &condSignal, nil
 }

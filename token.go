@@ -6,15 +6,14 @@ import (
 	"fmt"
 )
 
-// Token ...
-type Token struct {
+type token struct {
 	LRN  map[string]int    `json:"lrn"`
 	Q    []string          `json:"q"`
 	Data map[string][]byte `json:"data"`
 }
 
-func newToken(mon *Monitor) *Token {
-	token := Token{
+func newToken(mon *Monitor) *token {
+	token := token{
 		LRN:  map[string]int{},
 		Q:    []string{},
 		Data: map[string][]byte{},
@@ -28,7 +27,7 @@ func newToken(mon *Monitor) *Token {
 	return &token
 }
 
-func (t *Token) serializeData(data *map[string]interface{}) {
+func (t *token) serializeData(data *map[string]interface{}) {
 	for k, v := range *data {
 		marshData, err := json.Marshal(v)
 		if err != nil {
@@ -38,7 +37,7 @@ func (t *Token) serializeData(data *map[string]interface{}) {
 	}
 }
 
-func (t *Token) deserializeData(data *map[string]interface{}) error {
+func (t *token) deserializeData(data *map[string]interface{}) error {
 	for key := range *data {
 		val, _ := t.Data[key]
 		err := json.Unmarshal(val, (*data)[key])
@@ -49,7 +48,7 @@ func (t *Token) deserializeData(data *map[string]interface{}) error {
 	return nil
 }
 
-func (t *Token) updateQ(mon *Monitor) {
+func (t *token) updateQ(mon *Monitor) {
 	for address := range t.LRN {
 		if stringIndex(t.Q, address) == -1 && mon.RN[address] == t.LRN[address]+1 {
 			t.Q = append(t.Q, address)
@@ -57,7 +56,7 @@ func (t *Token) updateQ(mon *Monitor) {
 	}
 }
 
-func (t *Token) pop() (string, error) {
+func (t *token) pop() (string, error) {
 	if len(t.Q) > 0 {
 		address := t.Q[0]
 		t.Q = t.Q[1:]

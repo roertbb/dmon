@@ -7,28 +7,30 @@ import (
 
 // Monitor is distributed monitor structure handling data, token exchange and it's Conditional variables
 type Monitor struct {
-	mid    string
-	env    *Env
-	local  *sync.Mutex
-	isInCS bool
-	// csMutex *sync.Mutex
-	// conditionals map[string]*Conditional
-	data      *map[string]interface{}
-	RN        map[string]int
-	token     *Token
-	tokenChan chan bool
+	mid          string
+	env          *Env
+	local        *sync.Mutex
+	isInCS       bool
+	csMutex      *sync.Mutex
+	conditionals map[string]*Conditional
+	data         *map[string]interface{}
+	RN           map[string]int
+	token        *token
+	tokenChan    chan bool
 }
 
 func newMonitor(mid string, env *Env) (*Monitor, error) {
 	monitor := Monitor{
-		mid:       mid,
-		env:       env,
-		local:     &sync.Mutex{},
-		data:      &map[string]interface{}{},
-		RN:        map[string]int{},
-		isInCS:    false,
-		token:     nil,
-		tokenChan: make(chan bool),
+		mid:          mid,
+		env:          env,
+		local:        &sync.Mutex{},
+		csMutex:      &sync.Mutex{},
+		isInCS:       false,
+		conditionals: map[string]*Conditional{},
+		data:         &map[string]interface{}{},
+		RN:           map[string]int{},
+		token:        nil,
+		tokenChan:    make(chan bool),
 	}
 
 	monitor.RN[env.address] = 0
@@ -53,7 +55,7 @@ func (mon *Monitor) RegisterSharedData(data ...interface{}) {
 
 // Enter ...
 func (mon *Monitor) Enter() {
-	// mon.csMutex.Lock()
+	mon.csMutex.Lock()
 	mon.local.Lock()
 
 	if mon.token == nil {
@@ -87,7 +89,16 @@ func (mon *Monitor) Exit() {
 	mon.isInCS = false
 
 	mon.local.Unlock()
-	// mon.csMutex.Unlock()
+	mon.csMutex.Unlock()
+}
+
+// NewConditional ...
+func (mon *Monitor) NewConditional() *Conditional {
+	idx := strconv.Itoa(len(mon.conditionals))
+	cond := newConditional(mon, idx)
+	mon.conditionals[idx] = cond
+
+	return cond
 }
 
 func (mon *Monitor) sendToken(address string) {
@@ -118,7 +129,33 @@ func (mon *Monitor) handleTokenMessage(data []byte) {
 	mon.local.Lock()
 	mon.token = token
 	mon.token.deserializeData(mon.data)
+	mon.isInCS = true
 	mon.local.Unlock()
 
 	mon.tokenChan <- true
+}
+
+func (mon *Monitor) handleConditionalWaitMessage(data []byte) {
+	waitMsg, _ := deserializeConditionalWaitMessage(data)
+
+	mon.local.Lock()
+	mon.conditionals[waitMsg.Cid].addToWaiting(waitMsg.From)
+	mon.local.Unlock()
+}
+
+func (mon *Monitor) handleConditionalSignalMessage(data []byte) {
+	signalMsg, _ := deserializeConditionalSignalMessage(data)
+
+	mon.local.Lock()
+	mon.conditionals[signalMsg.Cid].receiveSignal()
+	mon.local.Unlock()
+}
+
+// Synchronized ...
+func Synchronized(mon *Monitor) func(f func()) {
+	return func(run func()) {
+		mon.Enter()
+		run()
+		mon.Exit()
+	}
 }

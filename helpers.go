@@ -8,3 +8,11 @@ func stringIndex(strs []string, str string) int {
 	}
 	return -1
 }
+
+func removeStringFromSlice(strs []string, str string) []string {
+	id := stringIndex(strs, str)
+	if id != -1 {
+		return append(strs[:id], strs[id+1:]...)
+	}
+	return strs
+}
