@@ -10,8 +10,7 @@ type Monitor struct {
 	mid          string
 	env          *Env
 	local        *sync.Mutex
-	isInCS       bool
-	csMutex      *sync.Mutex
+	keepToken    bool
 	conditionals map[string]*Conditional
 	data         *map[string]interface{}
 	RN           map[string]int
@@ -19,13 +18,12 @@ type Monitor struct {
 	tokenChan    chan bool
 }
 
-func newMonitor(mid string, env *Env) (*Monitor, error) {
+func newMonitor(mid string, env *Env) *Monitor {
 	monitor := Monitor{
 		mid:          mid,
 		env:          env,
 		local:        &sync.Mutex{},
-		csMutex:      &sync.Mutex{},
-		isInCS:       false,
+		keepToken:    false,
 		conditionals: map[string]*Conditional{},
 		data:         &map[string]interface{}{},
 		RN:           map[string]int{},
@@ -43,19 +41,18 @@ func newMonitor(mid string, env *Env) (*Monitor, error) {
 		monitor.token = newToken(&monitor)
 	}
 
-	return &monitor, nil
+	return &monitor
 }
 
-// RegisterSharedData ...
+// RegisterSharedData registers shared data for defined Monitor (comma-separated pointers for variables)
 func (mon *Monitor) RegisterSharedData(data ...interface{}) {
 	for id, value := range data {
 		(*mon.data)[strconv.Itoa(id)] = value
 	}
 }
 
-// Enter ...
+// Enter requests to enter distributed critical section for defined Monitor
 func (mon *Monitor) Enter() {
-	mon.csMutex.Lock()
 	mon.local.Lock()
 
 	if mon.token == nil {
@@ -70,11 +67,11 @@ func (mon *Monitor) Enter() {
 		mon.token.deserializeData(mon.data)
 	}
 
-	mon.isInCS = true
+	mon.keepToken = true
 	mon.local.Unlock()
 }
 
-// Exit ...
+// Exit leaves distributed critical section for defined Monitor
 func (mon *Monitor) Exit() {
 	mon.local.Lock()
 
@@ -86,13 +83,12 @@ func (mon *Monitor) Exit() {
 		mon.sendToken(address)
 	}
 
-	mon.isInCS = false
+	mon.keepToken = false
 
 	mon.local.Unlock()
-	mon.csMutex.Unlock()
 }
 
-// NewConditional ...
+// NewConditional creates new Conditional variable for defined Monitor
 func (mon *Monitor) NewConditional() *Conditional {
 	idx := strconv.Itoa(len(mon.conditionals))
 	cond := newConditional(mon, idx)
@@ -117,7 +113,7 @@ func (mon *Monitor) handleRequestCSMessage(data []byte) {
 	if requestCS.SN > mon.RN[requestCS.From] {
 		mon.RN[requestCS.From] = requestCS.SN
 	}
-	if mon.token != nil && !mon.isInCS && mon.RN[requestCS.From] == mon.token.LRN[requestCS.From]+1 {
+	if mon.token != nil && !mon.keepToken && mon.RN[requestCS.From] == mon.token.LRN[requestCS.From]+1 {
 		mon.sendToken(requestCS.From)
 	}
 	mon.local.Unlock()
@@ -129,7 +125,7 @@ func (mon *Monitor) handleTokenMessage(data []byte) {
 	mon.local.Lock()
 	mon.token = token
 	mon.token.deserializeData(mon.data)
-	mon.isInCS = true
+	mon.keepToken = true
 	mon.local.Unlock()
 
 	mon.tokenChan <- true
@@ -151,7 +147,7 @@ func (mon *Monitor) handleConditionalSignalMessage(data []byte) {
 	mon.local.Unlock()
 }
 
-// Synchronized ...
+// Synchronized is method imitating synchronized block. It's higher order function that takes Monitor and function without argument, that's executed within distributed critical section defined by Monitor
 func Synchronized(mon *Monitor) func(f func()) {
 	return func(run func()) {
 		mon.Enter()

@@ -15,7 +15,7 @@ func main() {
 	buf := []int{0}
 
 	env, _ := dmon.NewEnv(myAddress, otherNodes...)
-	mon, _ := env.NewMonitor()
+	mon := env.NewMonitor()
 
 	mon.RegisterSharedData(&buf)
 

@@ -19,7 +19,7 @@ func newConditional(mon *Monitor, cid string) *Conditional {
 	return &cond
 }
 
-// Wait ...
+// Wait waits on Conditional variables
 func (cond *Conditional) Wait() {
 	cond.waiting = append(cond.waiting, cond.monitor.env.address)
 	waitMsg, _ := serializeConditionalWaitMessage(cond.monitor.env.address, cond.monitor.mid, cond.cid)
@@ -30,7 +30,7 @@ func (cond *Conditional) Wait() {
 	cond.monitor.Enter()
 }
 
-// Notify ...
+// Notify sends signal message to one of the processes waiting on Conditional variable
 func (cond *Conditional) Notify() {
 	if len(cond.waiting) > 0 {
 		waitingAddress := cond.waiting[0]
@@ -45,7 +45,7 @@ func (cond *Conditional) Notify() {
 	}
 }
 
-// NotifyAll ...
+// NotifyAll sends signal message to all of the processes waiting on Conditional variable
 func (cond *Conditional) NotifyAll() {
 	signalMsg, _ := serializeConditionalSignalMessage(cond.monitor.mid, cond.cid)
 	for _, addr := range cond.waiting {
@@ -63,7 +63,6 @@ func (cond *Conditional) receiveSignal() {
 		cond.waiting = removeStringFromSlice(cond.waiting, cond.monitor.env.address)
 		cond.signalChan <- true
 	}
-	// if I'm not waiting, but received signal, should have to send it to someone else?
 }
 
 func (cond *Conditional) addToWaiting(address string) {

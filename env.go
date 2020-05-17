@@ -1,7 +1,6 @@
 package dmon
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -18,7 +17,7 @@ type Env struct {
 	running  bool
 }
 
-// NewEnv creates new distributed Env and initialize sockets
+// NewEnv creates distributed Env for group of nodes, that allows exchanging messages between them and creating Monitors
 func NewEnv(myAddress string, addresses ...string) (*Env, error) {
 	time.Sleep(time.Second)
 	fmt.Println("starting env on", myAddress)
@@ -47,16 +46,13 @@ func NewEnv(myAddress string, addresses ...string) (*Env, error) {
 	return &env, nil
 }
 
-// NewMonitor creates new distributed monitor for distributed Env
-func (env *Env) NewMonitor() (*Monitor, error) {
+// NewMonitor creates new Monitor for defined distributed Env
+func (env *Env) NewMonitor() *Monitor {
 	nextID := strconv.Itoa(len(env.monitors))
-	monitor, err := newMonitor(nextID, env)
-	if err != nil {
-		return nil, errors.New("failed to create monitor")
-	}
+	monitor := newMonitor(nextID, env)
 	env.monitors[nextID] = monitor
 
-	return monitor, nil
+	return monitor
 }
 
 // NewMonitor creates new distributed monitor with assigned name for distributed Env
