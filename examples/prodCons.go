@@ -2,7 +2,7 @@ package main
 
 // usage: go run prodcons.go <prod | cons> <myAddress> <addresses of other nodes>
 
-// example usage of 2 producers and 1 consumer
+// example execution of 2 producers and 1 consumer
 // go run prodcons.go prod 127.0.0.1:3001 127.0.0.1:3002 127.0.0.1:3003
 // go run prodcons.go prod 127.0.0.1:3002 127.0.0.1:3001 127.0.0.1:3003
 // go run prodcons.go cons 127.0.0.1:3003 127.0.0.1:3001 127.0.0.1:3002

@@ -1,5 +1,10 @@
 package main
 
+// example execution for 3 processes
+// go run counter.go 127.0.0.1:3001 127.0.0.1:3002 127.0.0.1:3003
+// go run counter.go 127.0.0.1:3002 127.0.0.1:3001 127.0.0.1:3003
+// go run counter.go 127.0.0.1:3003 127.0.0.1:3001 127.0.0.1:3002
+
 import (
 	"fmt"
 	"os"

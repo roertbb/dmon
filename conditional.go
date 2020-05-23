@@ -21,50 +21,56 @@ func newConditional(mon *Monitor, cid string) *Conditional {
 
 // Wait waits on Conditional variables
 func (cond *Conditional) Wait() {
-	cond.waiting = append(cond.waiting, cond.monitor.env.address)
-	waitMsg, _ := serializeConditionalWaitMessage(cond.monitor.env.address, cond.monitor.mid, cond.cid)
-	cond.monitor.env.broadcast(waitMsg)
+	cond.monitor.local.Lock()
+	if stringIndex(cond.waiting, cond.monitor.env.address) == -1 {
+		cond.waiting = append(cond.waiting, cond.monitor.env.address)
+	}
+	cond.monitor.local.Unlock()
 
 	cond.monitor.Exit()
 	<-cond.signalChan
 	cond.monitor.Enter()
+
+	cond.monitor.local.Lock()
+	cond.waiting = removeStringFromSlice(cond.waiting, cond.monitor.env.address)
+	cond.monitor.local.Unlock()
 }
 
 // Notify sends signal message to one of the processes waiting on Conditional variable
 func (cond *Conditional) Notify() {
+	cond.monitor.local.Lock()
+
 	if len(cond.waiting) > 0 {
 		waitingAddress := cond.waiting[0]
-		cond.waiting = cond.waiting[1:]
 		if waitingAddress == cond.monitor.env.address {
 			cond.signalChan <- true
 		} else {
 			signalMsg, _ := serializeConditionalSignalMessage(cond.monitor.mid, cond.cid)
-			cond.waiting = removeStringFromSlice(cond.waiting, waitingAddress)
 			cond.monitor.env.send(waitingAddress, signalMsg)
 		}
 	}
+
+	cond.monitor.local.Unlock()
 }
 
 // NotifyAll sends signal message to all of the processes waiting on Conditional variable
 func (cond *Conditional) NotifyAll() {
-	signalMsg, _ := serializeConditionalSignalMessage(cond.monitor.mid, cond.cid)
+	cond.monitor.local.Lock()
+
 	for _, addr := range cond.waiting {
 		if addr == cond.monitor.env.address {
 			cond.signalChan <- true
 		} else {
+			signalMsg, _ := serializeConditionalSignalMessage(cond.monitor.mid, cond.cid)
 			cond.monitor.env.send(addr, signalMsg)
 		}
 	}
-	cond.waiting = []string{}
+
+	cond.monitor.local.Unlock()
 }
 
 func (cond *Conditional) receiveSignal() {
 	if stringIndex(cond.waiting, cond.monitor.env.address) != -1 {
-		cond.waiting = removeStringFromSlice(cond.waiting, cond.monitor.env.address)
 		cond.signalChan <- true
 	}
-}
-
-func (cond *Conditional) addToWaiting(address string) {
-	cond.waiting = append(cond.waiting, address)
 }

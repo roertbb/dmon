@@ -93,8 +93,6 @@ func (env *Env) listener() {
 			env.monitors[msg.Mid].handleRequestCSMessage(msg.Data)
 		} else if msg.Type == tokenMessageType {
 			env.monitors[msg.Mid].handleTokenMessage(msg.Data)
-		} else if msg.Type == conditionalWaitMessageType {
-			env.monitors[msg.Mid].handleConditionalWaitMessage(msg.Data)
 		} else if msg.Type == conditionalSignalMessageType {
 			env.monitors[msg.Mid].handleConditionalSignalMessage(msg.Data)
 		}

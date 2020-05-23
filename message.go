@@ -8,7 +8,6 @@ import (
 
 const requestCSMessageType = "requestCS"
 const tokenMessageType = "token"
-const conditionalWaitMessageType = "conditionalWait"
 const conditionalSignalMessageType = "conditionalSignal"
 
 type message struct {
@@ -90,41 +89,6 @@ func deserializeTokenMessage(data []byte) (*token, error) {
 		return nil, errors.New("failed to deserialize Token")
 	}
 	return &token, nil
-}
-
-type conditionalWaitMessage struct {
-	From string `json:"from"`
-	Cid  string `json:"cond"`
-}
-
-func serializeConditionalWaitMessage(from string, mid string, cid string) ([]byte, error) {
-	condWait := conditionalWaitMessage{
-		From: from,
-		Cid:  cid,
-	}
-	marshCondWait, err := json.Marshal(condWait)
-	if err != nil {
-		return nil, errors.New("failed to serialize ConditionalWaitMessage")
-	}
-	msg := message{
-		Type: conditionalWaitMessageType,
-		Mid:  mid,
-		Data: marshCondWait,
-	}
-	marshMsg, err := json.Marshal(msg)
-	if err != nil {
-		return nil, errors.New("failed to serialize Message for ConditionalWaitMessage")
-	}
-	return marshMsg, nil
-}
-
-func deserializeConditionalWaitMessage(data []byte) (*conditionalWaitMessage, error) {
-	var condWait conditionalWaitMessage
-	err := json.Unmarshal(data, &condWait)
-	if err != nil {
-		return nil, errors.New("failed to deserialize RequestCSMessage")
-	}
-	return &condWait, nil
 }
 
 type conditionalSignalMessage struct {

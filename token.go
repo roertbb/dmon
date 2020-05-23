@@ -7,16 +7,18 @@ import (
 )
 
 type token struct {
-	LRN  map[string]int    `json:"lrn"`
-	Q    []string          `json:"q"`
-	Data map[string][]byte `json:"data"`
+	LRN         map[string]int    `json:"lrn"`
+	Q           []string          `json:"q"`
+	Data        map[string][]byte `json:"data"`
+	CondWaiting map[string][]byte `json:"condWaiting"`
 }
 
 func newToken(mon *Monitor) *token {
 	token := token{
-		LRN:  map[string]int{},
-		Q:    []string{},
-		Data: map[string][]byte{},
+		LRN:         map[string]int{},
+		Q:           []string{},
+		Data:        map[string][]byte{},
+		CondWaiting: map[string][]byte{},
 	}
 
 	token.LRN[mon.env.address] = 0
@@ -41,6 +43,27 @@ func (t *token) deserializeData(data *map[string]interface{}) error {
 	for key := range *data {
 		val, _ := t.Data[key]
 		err := json.Unmarshal(val, (*data)[key])
+		if err != nil {
+			return errors.New("failed to deserialize data form Token")
+		}
+	}
+	return nil
+}
+
+func (t *token) serializeCondWaiting(conds *map[string]*Conditional) {
+	for k, v := range *conds {
+		marshData, err := json.Marshal(v.waiting)
+		if err != nil {
+			fmt.Println("failed to serialize data to token")
+		}
+		t.CondWaiting[k] = marshData
+	}
+}
+
+func (t *token) deserializeCondWaiting(conds *map[string]*Conditional) error {
+	for key := range *conds {
+		condWaiting, _ := t.CondWaiting[key]
+		err := json.Unmarshal(condWaiting, &(*conds)[key].waiting)
 		if err != nil {
 			return errors.New("failed to deserialize data form Token")
 		}

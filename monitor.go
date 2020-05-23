@@ -64,7 +64,6 @@ func (mon *Monitor) Enter() {
 		<-mon.tokenChan
 
 		mon.local.Lock()
-		mon.token.deserializeData(mon.data)
 	}
 
 	mon.keepToken = true
@@ -99,6 +98,7 @@ func (mon *Monitor) NewConditional() *Conditional {
 
 func (mon *Monitor) sendToken(address string) {
 	mon.token.serializeData(mon.data)
+	mon.token.serializeCondWaiting(&mon.conditionals)
 	tokenMsg, _ := serializeTokenMessage(mon.mid, mon.token)
 	mon.env.send(address, tokenMsg)
 	mon.token = nil
@@ -125,18 +125,11 @@ func (mon *Monitor) handleTokenMessage(data []byte) {
 	mon.local.Lock()
 	mon.token = token
 	mon.token.deserializeData(mon.data)
+	mon.token.deserializeCondWaiting(&mon.conditionals)
 	mon.keepToken = true
 	mon.local.Unlock()
 
 	mon.tokenChan <- true
-}
-
-func (mon *Monitor) handleConditionalWaitMessage(data []byte) {
-	waitMsg, _ := deserializeConditionalWaitMessage(data)
-
-	mon.local.Lock()
-	mon.conditionals[waitMsg.Cid].addToWaiting(waitMsg.From)
-	mon.local.Unlock()
 }
 
 func (mon *Monitor) handleConditionalSignalMessage(data []byte) {
