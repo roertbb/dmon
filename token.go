@@ -11,6 +11,7 @@ type token struct {
 	Q           []string          `json:"q"`
 	Data        map[string][]byte `json:"data"`
 	CondWaiting map[string][]byte `json:"condWaiting"`
+	monitor     *Monitor
 }
 
 func newToken(mon *Monitor) *token {
@@ -19,6 +20,7 @@ func newToken(mon *Monitor) *token {
 		Q:           []string{},
 		Data:        map[string][]byte{},
 		CondWaiting: map[string][]byte{},
+		monitor:     mon,
 	}
 
 	token.LRN[mon.env.address] = 0
@@ -39,7 +41,7 @@ func (t *token) serializeData(data *map[string]interface{}) {
 	}
 }
 
-func (t *token) deserializeData(data *map[string]interface{}) error {
+func (t *token) deserializeData(data *map[string]interface{}, mon *Monitor) error {
 	for key := range *data {
 		val, _ := t.Data[key]
 		err := json.Unmarshal(val, (*data)[key])
@@ -47,6 +49,7 @@ func (t *token) deserializeData(data *map[string]interface{}) error {
 			return errors.New("failed to deserialize data form Token")
 		}
 	}
+	t.monitor = mon
 	return nil
 }
 
@@ -79,10 +82,25 @@ func (t *token) updateQ(mon *Monitor) {
 	}
 }
 
-func (t *token) pop() (string, error) {
+func (t *token) lastSignaledOrPop() (string, error) {
 	if len(t.Q) > 0 {
-		address := t.Q[0]
-		t.Q = t.Q[1:]
+		var signaledAndInToken []string
+		for _, addr := range t.monitor.lastSignaled {
+			if stringIndex(t.Q, addr) != -1 {
+				signaledAndInToken = append(signaledAndInToken, addr)
+			}
+		}
+
+		var address string
+		if len(signaledAndInToken) > 0 {
+			address = signaledAndInToken[0]
+			t.Q = removeStringFromSlice(t.Q, address)
+		} else {
+			address = t.Q[0]
+			t.Q = t.Q[1:]
+		}
+
+		t.monitor.lastSignaled = []string{}
 		return address, nil
 	}
 

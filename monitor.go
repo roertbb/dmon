@@ -16,6 +16,7 @@ type Monitor struct {
 	RN           map[string]int
 	token        *token
 	tokenChan    chan bool
+	lastSignaled []string
 }
 
 func newMonitor(mid string, env *Env) *Monitor {
@@ -29,6 +30,7 @@ func newMonitor(mid string, env *Env) *Monitor {
 		RN:           map[string]int{},
 		token:        nil,
 		tokenChan:    make(chan bool),
+		lastSignaled: []string{},
 	}
 
 	monitor.RN[env.address] = 0
@@ -77,7 +79,7 @@ func (mon *Monitor) Exit() {
 	mon.token.LRN[mon.env.address] = mon.RN[mon.env.address]
 	mon.token.updateQ(mon)
 
-	address, _ := mon.token.pop()
+	address, _ := mon.token.lastSignaledOrPop()
 	if address != "" {
 		mon.sendToken(address)
 	}
@@ -124,7 +126,7 @@ func (mon *Monitor) handleTokenMessage(data []byte) {
 
 	mon.local.Lock()
 	mon.token = token
-	mon.token.deserializeData(mon.data)
+	mon.token.deserializeData(mon.data, mon)
 	mon.token.deserializeCondWaiting(&mon.conditionals)
 	mon.keepToken = true
 	mon.local.Unlock()

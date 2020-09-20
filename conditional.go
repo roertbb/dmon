@@ -45,6 +45,7 @@ func (cond *Conditional) Notify() {
 		if waitingAddress == cond.monitor.env.address {
 			cond.signalChan <- true
 		} else {
+			cond.monitor.lastSignaled = append(cond.monitor.lastSignaled, waitingAddress)
 			signalMsg, _ := serializeConditionalSignalMessage(cond.monitor.mid, cond.cid)
 			cond.monitor.env.send(waitingAddress, signalMsg)
 		}
@@ -61,6 +62,7 @@ func (cond *Conditional) NotifyAll() {
 		if addr == cond.monitor.env.address {
 			cond.signalChan <- true
 		} else {
+			cond.monitor.lastSignaled = append(cond.monitor.lastSignaled, addr)
 			signalMsg, _ := serializeConditionalSignalMessage(cond.monitor.mid, cond.cid)
 			cond.monitor.env.send(addr, signalMsg)
 		}
